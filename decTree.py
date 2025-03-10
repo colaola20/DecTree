@@ -112,6 +112,49 @@ class DecisionTree:
         if x[node.feature] > node.threshold:
             return self._traverse_tree(x, node.right)
         
+    # Post_pruning - reduce error pruning
+    def prune(self, X_val, y_val):
+        self._prune_tree(self.root, X_val, y_val)
+
+    def _prune_tree(self, node,X_val, y_val):
+        if node.is_leaf():
+            return
+        
+        self._prune_tree(node.left, X_val, y_val)
+        self._prune_tree(node.right, X_val, y_val)
+
+        # save the current state
+        left_y = y_val[X_val[:, node.feature] < node.threshold]
+        right_y = y_val[X_val[:, node.feature] >= node.threshold]
+
+        # calculates the accuracy of the current subtree
+        original_accuracy = self._eveluate_accuracy(X_val, y_val)
+
+        # prune the node, replacing with majority class from its children
+        most_common_class = Counter(np.concatenate((left_y, right_y))).most_common(1)[0][0]
+        pruned_node = Node(values=most_common_class)
+
+        # replace the current node with the pruned node
+        node.left = node.right = None
+        node.value = most_common_class
+
+        # evaluate accuracy after pruning
+        pruned_accuracy = self._eveluate_accuracy(X_val, y_val)
+
+        if pruned_accuracy >= original_accuracy:
+            return
+        else:
+            # restore the tree
+            node.left = left_y
+            node.right = right_y
+            node.value = None
+
+    
+    def _eveluate_accuracy(self, X_val, y_val):
+        predictions = self.predict(X_val)
+        return np.mean(predictions == y_val)
+
+        
 if __name__=="__main__":
     from sklearn.datasets import load_breast_cancer
     from sklearn.model_selection import train_test_split
@@ -152,8 +195,10 @@ if __name__=="__main__":
 
     X = df.drop(columns='target', axis =1).to_numpy()
     y = df['target'].to_numpy()
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+    #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     #tree = DecisionTree()
     tree = DecisionTree(max_depth=3)
@@ -168,13 +213,13 @@ if __name__=="__main__":
 
     accuracy = np.mean(prediction == y_test)
 
-    print(f"Accuracy score: {accuracy: .2f}")
+    print(f"Accuracy score: {accuracy: .3f}")
 
     precision_test = precision_score(y_test, prediction)
-    print(f"Precision score: {precision_test: .2f}")
+    print(f"Precision score: {precision_test: .3f}")
 
     recall_test = recall_score(y_test, prediction)
-    print(f"Recall score: {precision_test: .2f}")
+    print(f"Recall score: {precision_test: .3f}")
 
     f1_score_test = f1_score(y_test, prediction)
-    print(f"F1 score: {precision_test: .2f}")
+    print(f"F1 score: {precision_test: .3f}")
