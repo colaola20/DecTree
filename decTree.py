@@ -119,12 +119,39 @@ if __name__=="__main__":
     from sklearn.metrics import precision_score
     from sklearn.metrics import recall_score
     from sklearn.metrics import f1_score
-
+    from sklearn.preprocessing import LabelEncoder, StandardScaler
+    import pandas as pd
 
     data = load_breast_cancer()
-    # print("All labels:")
-    # print(data.target)
-    X, y = data.data, data.target
+
+    # _______ This part is unnecessary, and it's present just for learning purposes. The load_breast_cancer is already preprocessed.
+    # converts dataset into a DataFrame for easier manipulation
+    df = pd.DataFrame(data.data, columns=data.feature_names)
+    print(df.head())
+
+    # convert target to DataFrame
+    df['target'] = data.target
+
+    # Handling missing values (if any)
+    # filling missing values with mean column values
+    df.fillna(df.mean(), inplace=True)
+
+    # Converts categorical labels into numerical values
+    label_encoder = LabelEncoder()
+    df["target"] = label_encoder.fit_transform(df["target"])
+
+    # Feature scaling
+    scaler = StandardScaler()
+    # df.iloc[:,:-1] selects all rows and all columns except the last one (The last one usualy represents labels)
+    df.iloc[:,:-1] = scaler.fit_transform(df.iloc[:,:-1])
+
+    print(df.head())
+
+    # ___________________________________________________________
+    #X, y = data.data, data.target
+
+    X = df.drop(columns='target', axis =1).to_numpy()
+    y = df['target'].to_numpy()
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
