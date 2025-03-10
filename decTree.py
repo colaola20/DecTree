@@ -116,11 +116,14 @@ if __name__=="__main__":
     from sklearn.datasets import load_breast_cancer
     from sklearn.model_selection import train_test_split
     from sklearn.tree import DecisionTreeClassifier
+    from sklearn.metrics import precision_score
+    from sklearn.metrics import recall_score
+    from sklearn.metrics import f1_score
 
 
     data = load_breast_cancer()
-    print("All labels:")
-    print(data.target)
+    # print("All labels:")
+    # print(data.target)
     X, y = data.data, data.target
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -138,4 +141,13 @@ if __name__=="__main__":
 
     accuracy = np.mean(prediction == y_test)
 
-    print(f"Accuracy: {accuracy: .2f}")
+    print(f"Accuracy score: {accuracy: .2f}")
+
+    precision_test = precision_score(y_test, prediction)
+    print(f"Precision score: {precision_test: .2f}")
+
+    recall_test = recall_score(y_test, prediction)
+    print(f"Recall score: {precision_test: .2f}")
+
+    f1_score_test = f1_score(y_test, prediction)
+    print(f"F1 score: {precision_test: .2f}")
