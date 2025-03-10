@@ -13,8 +13,11 @@ class Node:
         return self.value is not None
     
 class DecisionTree:
-    def __init__(self, max_depth = None):
+    def __init__(self, max_depth = None, min_sample_split = 2, min_sample_leaf = 1, min_impurity_decrease = 0):
         self.max_depth = max_depth
+        self.min_sample_split = min_sample_split
+        self.min_sample_leaf = min_sample_leaf
+        self.min_impurity_decrease = min_impurity_decrease
         self.root = None
     
     # X is a matrix where each row is a samole and each row is a feature
@@ -34,6 +37,10 @@ class DecisionTree:
             # Counter(y).most_common(1)[0][0] returns the first element in the first tuple in a list
             return Node(value = Counter(y).most_common(1)[0][0])
         
+        # check if there are enough samples to split
+        if num_samples < self.min_sample_split:
+            return Node(value = Counter(y).most_common(1)[0][0])
+        
         # Finds the best feature and threshold to split on
         best_feature, best_threshold = self._best_split(X, y, num_features)
 
@@ -43,7 +50,7 @@ class DecisionTree:
 
         # X[:, best_feature] selects all rows from best_feature column
         # X[:, best_feature] < best_threshold returns a boolean mask [ True True False False ... ]
-        left_index = X[:, best_feature] < best_threshold
+        left_index = X[:, best_feature] <= best_threshold
         # ~ inverts the boolean mask. (bitwise NOT)
         right_index = ~left_index
         # recursivly calls _grow_tree().
@@ -51,6 +58,14 @@ class DecisionTree:
         left_child = self._grow_tree(X[left_index], y[left_index], depth + 1)
         # Selects rows where right_index is True
         right_child = self._grow_tree(X[right_index], y[right_index], depth + 1)
+
+        # Check if there is at lelast one sample in a leaf
+        if len(y[left_index]) < self.min_sample_leaf or len(y[right_index]) < self.min_sample_leaf:
+            return Node(value = Counter(y).most_common(1)[0][0])
+        
+        # Check if the impurity decrease is sufficient
+        if self._information_gain(y, X[:,best_feature], best_threshold) < self.min_impurity_decrease:
+            return Node(value = Counter(y).most_common(1)[0][0])
 
         return Node(feature = best_feature, threshold = best_threshold, left = left_child, right = right_child)
     
@@ -71,7 +86,7 @@ class DecisionTree:
     
     def _information_gain(self, y, X_column, threshold):
         parent_enropy = self._entropy(y)
-        left_y, right_y = y[X_column < threshold], y[X_column >= threshold]
+        left_y, right_y = y[X_column <= threshold], y[X_column > threshold]
         n, n_left, n_right = len(y), len(left_y), len(right_y)
         if n_left == 0 or n_right == 0:
             return 0
@@ -92,26 +107,33 @@ class DecisionTree:
         if node.is_leaf():
             return node.value
         
-        if x[node.feature] < node.threshold:
+        if x[node.feature] <= node.threshold:
             return self._traverse_tree(x, node.left)
         if x[node.feature] > node.threshold:
             return self._traverse_tree(x, node.right)
         
 if __name__=="__main__":
-    from sklearn.datasets import load_iris
+    from sklearn.datasets import load_breast_cancer
     from sklearn.model_selection import train_test_split
+    from sklearn.tree import DecisionTreeClassifier
 
-    data = load_iris()
+
+    data = load_breast_cancer()
+    print("All labels:")
     print(data.target)
     X, y = data.data, data.target
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    tree = DecisionTree(max_depth=2)
+    #tree = DecisionTree()
+    tree = DecisionTree(max_depth=3)
+    #tree = DecisionTreeClassifier()
     tree.fit(X_train, y_train)
 
     prediction = tree.predict(X_test)
+    print("Predicted labels:")
     print(prediction)
+    print("Actual labels:")
     print(y_test)
 
     accuracy = np.mean(prediction == y_test)
