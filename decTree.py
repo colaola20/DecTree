@@ -59,7 +59,7 @@ class DecisionTree:
         # Selects rows where right_index is True
         right_child = self._grow_tree(X[right_index], y[right_index], depth + 1)
 
-        # Check if there is at lelast one sample in a leaf
+        # Check if there is at least one sample in a leaf
         if len(y[left_index]) < self.min_sample_leaf or len(y[right_index]) < self.min_sample_leaf:
             return Node(value = Counter(y).most_common(1)[0][0])
         
@@ -112,7 +112,7 @@ class DecisionTree:
         if x[node.feature] > node.threshold:
             return self._traverse_tree(x, node.right)
         
-    # Post_pruning - reduce error pruning
+    # Post_pruning - reduced error pruning
     def prune(self, X_val, y_val):
         self._prune_tree(self.root, X_val, y_val)
 
@@ -153,17 +153,33 @@ class DecisionTree:
     def _eveluate_accuracy(self, X_val, y_val):
         predictions = self.predict(X_val)
         return np.mean(predictions == y_val)
+    
+        
 
         
 if __name__=="__main__":
     from sklearn.datasets import load_breast_cancer
-    from sklearn.model_selection import train_test_split
+    from sklearn.model_selection import train_test_split, KFold, cross_val_score
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.metrics import precision_score
     from sklearn.metrics import recall_score
     from sklearn.metrics import f1_score
     from sklearn.preprocessing import LabelEncoder, StandardScaler
     import pandas as pd
+
+    def cross_validate(tree, X, y, k=4):
+        kf = KFold(n_splits=k, shuffle = True, random_state = 42)
+        accuracies = []
+
+        for train_index, test_index in kf.split(X):
+            X_train, X_test = X[train_index], X[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+
+            tree.fit(X_train, y_train)
+            predictions = tree.predict(X_test)
+            accuracy = np.mean(predictions == y_test)
+            accuracies.append(accuracy)
+        return np.mean(accuracies), np.std(accuracies)
 
     data = load_breast_cancer()
 
@@ -203,7 +219,11 @@ if __name__=="__main__":
     #tree = DecisionTree()
     tree = DecisionTree(max_depth=3)
     #tree = DecisionTreeClassifier()
-    tree.fit(X_train, y_train)
+
+    #tree.fit(X_train, y_train)
+
+    mean_accuracy, std_accuracy = cross_validate(tree, X, y, k = 3)
+    print(f"Cross-Validation Accuracy: {mean_accuracy:.2f} ± {std_accuracy:.2f}")
 
     prediction = tree.predict(X_test)
     print("Predicted labels:")
