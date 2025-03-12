@@ -19,11 +19,16 @@ class DecisionTree:
         self.min_sample_leaf = min_sample_leaf
         self.min_impurity_decrease = min_impurity_decrease
         self.root = None
+        self.feature_importances_ = None
     
     # X is a matrix where each row is a samole and each row is a feature
     # y is target labels
     def fit(self, X, y):
+        # initialize with zeros
+        self.feature_importances_ = np.zeros(X.shape[1])
         self.root = self._grow_tree(X, y)
+        # normalize importance
+        self.feature_importances_/= self.feature_importances_.sum()
 
     def _grow_tree(self, X, y, depth = 0):
         # .shape returns #of rows and #of columns in a DataFrame (NumPy or pandas)
@@ -42,11 +47,14 @@ class DecisionTree:
             return Node(value = Counter(y).most_common(1)[0][0])
         
         # Finds the best feature and threshold to split on
-        best_feature, best_threshold = self._best_split(X, y, num_features)
+        best_feature, best_threshold, best_gain = self._best_split(X, y, num_features)
 
         # If no good split is found, return a leaf node with the majority class. It's a part of Base case!!!
         if best_feature is None:
             return Node(value = Counter(y).most_common(1)[0][0])
+        
+        # updates feature importance with the best split's information gain
+        self.feature_importances_[best_feature] += best_gain
 
         # X[:, best_feature] selects all rows from best_feature column
         # X[:, best_feature] < best_threshold returns a boolean mask [ True True False False ... ]
@@ -82,7 +90,7 @@ class DecisionTree:
                     best_gain = gain
                     best_threshold = threshold
                     best_feature = feature
-        return best_feature, best_threshold
+        return best_feature, best_threshold, best_gain
     
     def _information_gain(self, y, X_column, threshold):
         parent_enropy = self._entropy(y)
@@ -182,6 +190,9 @@ if __name__=="__main__":
         return np.mean(accuracies), np.std(accuracies)
 
     data = load_breast_cancer()
+    if data is None:
+        raise ValueError("Failed to load the breast cancer dataset")
+
 
     # _______ This part is unnecessary, and it's present just for learning purposes. The load_breast_cancer is already preprocessed.
     # converts dataset into a DataFrame for easier manipulation
@@ -222,8 +233,11 @@ if __name__=="__main__":
 
     #tree.fit(X_train, y_train)
 
+
     mean_accuracy, std_accuracy = cross_validate(tree, X, y, k = 3)
     print(f"Cross-Validation Accuracy: {mean_accuracy:.2f} ± {std_accuracy:.2f}")
+
+
 
     prediction = tree.predict(X_test)
     print("Predicted labels:")
@@ -243,3 +257,9 @@ if __name__=="__main__":
 
     f1_score_test = f1_score(y_test, prediction)
     print(f"F1 score: {precision_test: .3f}")
+
+
+    feature_names = data.feature_names
+    print("\nFeature Importances:")
+    for name, importance in zip(feature_names, tree.feature_importances_):
+        print(f"{name}: {importance:.4f}")
