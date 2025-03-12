@@ -175,7 +175,7 @@ if __name__=="__main__":
     from sklearn.preprocessing import LabelEncoder, StandardScaler
     import pandas as pd
 
-    def cross_validate(tree, X, y, k=4):
+    def cross_validate(tree, X, y, k=3):
         kf = KFold(n_splits=k, shuffle = True, random_state = 42)
         accuracies = []
 
